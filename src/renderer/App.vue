@@ -10,6 +10,7 @@
         <b-select v-model="type" id="search-type" placeholder="검색 유형">
           <option value="title" selected>제목</option>
           <option value="author">저자</option>
+          <option value="tag">태그</option>
           <option value="isbn">ISBN</option>
         </b-select>
         <b-input v-model="query" id="search-query" placeholder="검색..." icon="magnify" expanded></b-input>
@@ -20,6 +21,11 @@
         <div id="empty" v-if="list.length === 0">
           <h5>검색 결과가 없습니다.</h5>
         </div>
+        <div id="tag-list" v-if="type === 'tag'">
+          <h6>태그 목록</h6>
+          <span class="badge badge-secondary" v-on:click="tagClick" v-for="tag in tags" v-bind:key="tag" style="margin-right: 5px;">{{tag}}</span>
+        </div>
+        <h5>{{list.length}}개 검색됨</h5>
       <div class="card-columns">
         <div class="card" v-for="item in list" v-bind:key="item">
           <img :src="item.imageUrl" class="card-img-top" :alt="item.title"/>
@@ -28,6 +34,9 @@
             <p
               class="card-text"
             >{{item.author}} 저</p>
+            <div v-for="tag in item.tags" v-bind:key="tag" style="display: inline; margin-left: 5px;">
+              <span class="badge badge-secondary">{{tag}}</span>
+            </div>
           </div>
           <div class="card-footer">
           <p class="card-text">
@@ -58,12 +67,18 @@ export default {
     return {
       type: "title",
       query: "",
-      url: "http://localhost:3000",
+      url: "http://13.209.89.75",
       list: [],
       status: "연결 안 됨",
+      tags: []
     };
   },
   methods: {
+    tagClick: function(e) {
+      console.log(e.target);
+      if(this.query !== "") this.query += ","; 
+      this.query += e.target.innerText;
+    },
     search: function() {
       this.list = [];
       this.checkServer();
@@ -117,6 +132,14 @@ export default {
         }
       });
     }
+  },
+  created() {
+    var request = require('request');
+    var self = this;
+    request.get(self.url+ "/api/tags", function(err, res, body){
+      console.log(body);
+      self.tags = JSON.parse(body).list;
+    });
   }
 };
 </script>
