@@ -4,9 +4,9 @@
       <small>
         <span class="title">도서 검색</span>
         서버 - {{ url }} -
-        <span>{{ status }} - </span>
-        <span>{{userId}} - </span>
-      <button class="button is-primary" @click="isLoginModalActive=true">로그인</button>
+        <span>{{ status }} -</span>
+        <span>{{userId}} -</span>
+        <button class="button is-primary" @click="isLoginModalActive=true">로그인</button>
       </small>
       <form id="search-form">
         <b-field>
@@ -38,7 +38,13 @@
       </div>
       <h5>{{list.length}}개 검색됨</h5>
       <div class="card-columns">
-        <div class="card" v-for="item in list" v-bind:key="item">
+        <div
+          class="card"
+          v-for="item in list"
+          v-bind:key="item"
+          v-on:click="onItemClick(item)"
+          data-target="detailModal"
+        >
           <img :src="item.imageUrl" class="card-img-top" :alt="item.title" />
           <div class="card-body">
             <h5 class="card-title">{{item.title}}</h5>
@@ -58,12 +64,43 @@
               <small class="text-muted">출판일자 - {{item.publishedAt}}</small>
               <br />
               <small class="text-muted">대출상태 - {{item.statusDesc}}</small>
-              <small class="card-link" v-on:click="deleteItem(item._id)">삭제</small>
             </p>
           </div>
         </div>
       </div>
     </div>
+
+    <b-modal :active.sync="isDetailModalActive" :width="640" scroll="keep">
+      <div class="card">
+        <div class="card-image" style="height: 400px; width: 640px;">
+          <figure class="image is-3by4">
+            <img :src="selectedItem.imageUrl" style="height: 400px; width: 640px;"/>
+          </figure>
+        </div>
+        <div class="card-content">
+          <div class="content">
+            <h4>{{selectedItem.title}}</h4>
+            <p>{{selectedItem.author}} 저</p>
+            <div
+              v-for="tag in selectedItem.tags"
+              v-bind:key="tag"
+              style="display: inline; margin-left: 5px;"
+            >
+              <span class="badge badge-secondary">{{tag}}</span><br>
+            </div>
+            <small class="text-muted">ISBN - {{selectedItem.isbn}}</small>
+            <br />
+            <small class="text-muted">출판일자 - {{selectedItem.publishedAt}}</small>
+            <br />
+            <small class="text-muted">대출상태 - {{selectedItem.statusDesc}}</small>
+            <div v-for="log in selectedItem.rentalLog" v-bind:key="log">
+              <small class="text-muted">{{log.rentalAt}} 부터 {{log.returnAt}} 까지 {{log.userId}} 님이 대출함</small><br>
+            </div>
+          </div>
+        </div>
+      </div>
+    </b-modal>
+
     <b-modal :active.sync="isLoginModalActive" has-modal-card trap-focus>
       <form action>
         <div class="modal-card" style="width: auto">
@@ -72,13 +109,13 @@
           </header>
           <section class="modal-card-body">
             <b-field label="사용자 이름">
-              <b-input type="text" :value="username" placeholder="사용자 이름" required></b-input>
+              <b-input type="text" v-model="username" placeholder="사용자 이름" required></b-input>
             </b-field>
 
             <b-field label="비밀번호">
               <b-input
                 type="password"
-                :value="password"
+                v-model="password"
                 password-reveal
                 placeholder="비밀번호"
                 required
@@ -96,7 +133,7 @@
   </div>
 </template>
 
-<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 
 <!-- Popper -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
@@ -120,12 +157,18 @@ export default {
       username: "",
       password: "",
       userId: "",
-      isLoginModalActive: false
+      isLoginModalActive: false,
+      isDetailModalActive: false,
+      selectedItem: {}
     };
   },
-  methods: {  //TODO: submit 이벤트 추가
+  methods: {
+    onItemClick: function(item) {
+      this.selectedItem = item;
+      this.isDetailModalActive = true;
+    },
     login: function() {
-      var request = require('request');
+      var request = require("request");
       var self = this;
       var options = {
         uri: this.url + "/api/user/login",
@@ -137,13 +180,15 @@ export default {
         json: true
       };
       request.post(options, function(err, res, body) {
-        if(body.error !== null) return console.log(body.error);
-        self.userId = JSON.parse(body).id;
+        if (body.error !== null && body.error !== undefined)
+          return console.log(body.error);
+        console.log(body);
+        self.userId = body.id;
       });
     },
     signup: function() {
-      var {shell} = require('electron');
-      shell.openExternal(this.url+"/signup/");
+      var { shell } = require("electron");
+      shell.openExternal(this.url + "/signup/");
     },
     deleteItem: function(id) {
       var request = require("request");
