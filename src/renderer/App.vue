@@ -52,7 +52,7 @@
             <div
               v-for="tag in item.tags"
               v-bind:key="tag"
-              style="display: inline; margin-left: 5px;"
+              style="display: inline; margin-right: 5px;"
             >
               <span class="badge badge-secondary">{{tag}}</span>
             </div>
@@ -72,29 +72,62 @@
 
     <b-modal :active.sync="isDetailModalActive" :width="640" scroll="keep">
       <div class="card">
-        <div class="card-image" style="height: 400px; width: 640px;">
-          <figure class="image is-3by4">
-            <img :src="selectedItem.imageUrl" style="height: 400px; width: 640px;"/>
+        <div class="card-image" style="height: 800px; width: 600px;">
+          <figure class="image is-6by19">
+            <img :src="selectedItem.imageUrl" style="height: 800px; width: 640px;"/>
           </figure>
         </div>
         <div class="card-content">
           <div class="content">
             <h4>{{selectedItem.title}}</h4>
             <p>{{selectedItem.author}} 저</p>
-            <div
-              v-for="tag in selectedItem.tags"
-              v-bind:key="tag"
-              style="display: inline; margin-left: 5px;"
-            >
-              <span class="badge badge-secondary">{{tag}}</span><br>
-            </div>
+            
             <small class="text-muted">ISBN - {{selectedItem.isbn}}</small>
             <br />
             <small class="text-muted">출판일자 - {{selectedItem.publishedAt}}</small>
             <br />
             <small class="text-muted">대출상태 - {{selectedItem.statusDesc}}</small>
+            <br>
+            <div
+              v-for="tag in selectedItem.tags"
+              v-bind:key="tag"
+              style="display: inline; margin-right: 5px;"
+            >
+              <span class="badge badge-secondary">{{tag}}</span>
+            </div><br>
+            <h5>대출 기록</h5>
+            <ul class="list-group list-group-flush">
             <div v-for="log in selectedItem.rentalLog" v-bind:key="log">
               <small class="text-muted">{{log.rentalAt}} 부터 {{log.returnAt}} 까지 {{log.userId}} 님이 대출함</small><br>
+            </div>
+            </ul>
+            <div v-if="selectedItem.status === 1">
+              <button v class="btn btn-primary" v-on:click="isRentalFormActive = !isRentalFormActive">대출</button>
+              <div v-if="isRentalFormActive">
+                <form>
+                  <b-field label="대출 일자">
+                    <b-datepicker
+                      v-model="rentalAt"
+                      placeholder="날짜 선택"
+                      icon="calendar-today"
+                      editable>
+                    </b-datepicker>
+                  </b-field>
+                  <b-field label="반납 일자">
+                    <b-datepicker
+                      v-model="returnAt"
+                      placeholder="날짜 선택"
+                      icon="calendar-today"
+                      editable>
+                    </b-datepicker>
+                  </b-field>
+
+                    <button class="btn btn-primary" v-on:click="rent(selectedItem)">확인</button>
+                </form>
+              </div>
+            </div>
+            <div v-if="selectedItem.status === 0 && selectedItem.rentalLog[selectedItem.rentalLog.length - 1].userId === userId">
+              <button class="btn btn-primary" v-on:click="returnReq(selectedItem)">반납 신청</button>
             </div>
           </div>
         </div>
@@ -156,13 +189,53 @@ export default {
       userId: "",
       username: "",
       password: "",
+      rentalAt: new Date(),
+      returnAt: new Date(),
       userId: "",
+      isRentalFormActive: false,
       isLoginModalActive: false,
       isDetailModalActive: false,
       selectedItem: {}
     };
   },
   methods: {
+    returnReq: function(book) {
+      var request = require('request');
+      var options = {
+        uri: this.url + "/api/books/return",
+        method: "POST",
+        body: {
+          bookId: book._id,
+          logId: book.rentalLog[book.rentalLog.length - 1]._id,
+          userId: this.userId
+        },
+        json: true
+      }
+      request.post(options, function (err, res, body) {
+        if (body.error !== null && body.error !== undefined)
+          return console.log(body.error);
+        console.log(body.ticketId);
+      });
+    },
+    rent: function(book) {
+      if(book.status === 0 || this.userId === "") return;
+      var request = require('request');
+      var moment = require('moment');
+      var options = {
+        uri: this.url + "/api/books/rental/" + book._id,
+        method: "PUT",
+        body: {
+          rentalAt: moment(this.rentalAt).format('YYYY-MM-DD'),
+          returnAt: moment(this.returnAt).format('YYYY-MM-DD'),
+          userId: this.userId
+        },
+        json: true
+      };
+      request.put(options, function (err, res, body) {
+        if (body.error !== null && body.error !== undefined)
+          return console.log(body.error);
+      });
+    },
     onItemClick: function(item) {
       this.selectedItem = item;
       this.isDetailModalActive = true;
@@ -293,6 +366,10 @@ export default {
 
 .card {
   display: inline-block;
+}
+
+.card-image {
+  margin: 10px;
 }
 
 .card-link {
