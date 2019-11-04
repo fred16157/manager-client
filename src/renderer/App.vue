@@ -65,6 +65,7 @@
               <br />
               <small class="text-muted">대출상태 - {{item.statusDesc}}</small>
             </p>
+            <a class="card-link" v-on:click="deleteItem(item._id)">삭제</a>
           </div>
         </div>
       </div>
@@ -104,7 +105,6 @@
             <div v-if="selectedItem.status === 1">
               <button v class="btn btn-primary" v-on:click="isRentalFormActive = !isRentalFormActive">대출</button>
               <div v-if="isRentalFormActive">
-                <form>
                   <b-field label="대출 일자">
                     <b-datepicker
                       v-model="rentalAt"
@@ -123,7 +123,6 @@
                   </b-field>
 
                     <button class="btn btn-primary" v-on:click="rent(selectedItem)">확인</button>
-                </form>
               </div>
             </div>
             <div v-if="selectedItem.status === 0 && selectedItem.rentalLog[selectedItem.rentalLog.length - 1].userId === userId">
@@ -182,7 +181,7 @@ export default {
     return {
       type: "title",
       query: "",
-      url: "http://localhost:3000",
+      url: "http://13.209.89.75",
       list: [],
       status: "연결 안 됨",
       tags: [],
@@ -201,6 +200,7 @@ export default {
   methods: {
     returnReq: function(book) {
       var request = require('request');
+      var self = this;
       var options = {
         uri: this.url + "/api/books/return",
         method: "POST",
@@ -215,12 +215,15 @@ export default {
         if (body.error !== null && body.error !== undefined)
           return console.log(body.error);
         console.log(body.ticketId);
+        self.isDetailModalActive = false; 
+        self.search();
       });
     },
     rent: function(book) {
       if(book.status === 0 || this.userId === "") return;
       var request = require('request');
       var moment = require('moment');
+      var self = this;
       var options = {
         uri: this.url + "/api/books/rental/" + book._id,
         method: "PUT",
@@ -234,6 +237,8 @@ export default {
       request.put(options, function (err, res, body) {
         if (body.error !== null && body.error !== undefined)
           return console.log(body.error);
+        self.isDetailModalActive = false;
+        self.search();
       });
     },
     onItemClick: function(item) {
@@ -255,8 +260,8 @@ export default {
       request.post(options, function(err, res, body) {
         if (body.error !== null && body.error !== undefined)
           return console.log(body.error);
-        console.log(body);
         self.userId = body.id;
+        self.isLoginModalActive = false;
       });
     },
     signup: function() {
@@ -266,7 +271,15 @@ export default {
     deleteItem: function(id) {
       var request = require("request");
       var self = this;
-      request.delete(this.url + "/api/admin/delete/" + id, function(
+      var options = {
+        uri: this.url + "/api/admin/delete/PASSWORD",
+        method: "DELETE",
+        body: {
+          id: id
+        },
+        json: true
+      }
+      request.delete(options, function(
         err,
         res,
         body
